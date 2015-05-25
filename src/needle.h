@@ -12,6 +12,14 @@
  Alan Senior 23/2/2015
  */
 
+/*
+  Removed some code not used in this project.
+  Check http://www.instructables.com/id/Arduino-sketch-for-a-retro-analogue-meter-graphic-/
+  for Alan Senior's original code.
+
+  Christopher Creutzig, 2015-05-21
+*/
+
 // These are the connections for the UNO to display
 #define sclk 13  // Don't change
 #define mosi 11  // Don't change
@@ -31,133 +39,20 @@ Adafruit_ILI9341_AS tft = Adafruit_ILI9341_AS(cs, dc, rst); // Invoke custom lib
 
 float ltx = 0;    // Saved x coord of bottom of needle
 uint16_t osx = 120, osy = 120; // Saved x & y coords
-uint32_t updateTime = 0;       // time for next update
 
 int old_analog =  -999; // Value last displayed
-int old_digital = -999; // Value last displayed
 
+// position parameters
+static const int xmin = 0, xmax = 280, ymin = 0, ymax = 160;
+static const int xmid = (xmin+xmax)/2;
+static const int needle_length = 123, scale_dia = 132;
+static const int needle_outside = 20;
+static const int yoffset = ymax+needle_outside-2;
 
-void setup(void) {
-  tft.init();
-  tft.setRotation(2);
+static const double degToAngle = 0.0174532925;
 
-  tft.fillScreen(ILI9341_BLACK);
-
-  analogMeter(); // Draw analogue meter
-  
-  digitalMeter(); // Draw digital meter
-
-  updateTime = millis(); // Next update time
-}
-
-
-void loop() {
-  if (updateTime <= millis()) {
-    updateTime = millis() + 500;
-
-    int reading = 0;
-    reading = random(-50, 151); // Test with random value
-    reading = map(analogRead(A0),0,1023,0,100); // Test with value form Analogue 0
-
-    showDigital(reading); // Update digital reading
-    
-    plotNeedle(reading, 8); // Update analogue meter, 8ms delay per needle increment
-    
-  }
-}
-
-
-// #########################################################################
-//  Draw the analogue meter on the screen
-// #########################################################################
-void analogMeter()
-{
-  // Meter outline
-  tft.fillRect(0, 0, 239, 126, ILI9341_GREY);
-  tft.fillRect(5, 3, 230, 119, ILI9341_WHITE);
-  
-  tft.setTextColor(ILI9341_BLACK);  // Text colour
-  
-  // Draw ticks every 5 degrees from -50 to +50 degrees (100 deg. FSD swing)
-  for (int i = -50; i < 51; i += 5) {
-    // Long scale tick length
-    int tl = 15;
-    
-    // Coodinates of tick to draw
-    float sx = cos((i - 90) * 0.0174532925);
-    float sy = sin((i - 90) * 0.0174532925);
-    uint16_t x0 = sx * (100 + tl) + 120;
-    uint16_t y0 = sy * (100 + tl) + 140;
-    uint16_t x1 = sx * 100 + 120;
-    uint16_t y1 = sy * 100 + 140;
-    
-    // Coordinates of next tick for zone fill
-    float sx2 = cos((i + 5 - 90) * 0.0174532925);
-    float sy2 = sin((i + 5 - 90) * 0.0174532925);
-    int x2 = sx2 * (100 + tl) + 120;
-    int y2 = sy2 * (100 + tl) + 140;
-    int x3 = sx2 * 100 + 120;
-    int y3 = sy2 * 100 + 140;
-    
-    // Yellow zone limits
-    //if (i >= -50 && i < 0) {
-    //  tft.fillTriangle(x0, y0, x1, y1, x2, y2, ILI9341_YELLOW);
-    //  tft.fillTriangle(x1, y1, x2, y2, x3, y3, ILI9341_YELLOW);
-    //}
-    
-    // Green zone limits
-    if (i >= 0 && i < 25) {
-      tft.fillTriangle(x0, y0, x1, y1, x2, y2, ILI9341_GREEN);
-      tft.fillTriangle(x1, y1, x2, y2, x3, y3, ILI9341_GREEN);
-    }
-
-    // Orange zone limits
-    if (i >= 25 && i < 50) {
-      tft.fillTriangle(x0, y0, x1, y1, x2, y2, ILI9341_ORANGE);
-      tft.fillTriangle(x1, y1, x2, y2, x3, y3, ILI9341_ORANGE);
-    }
-    
-    // Short scale tick length
-    if (i % 25 != 0) tl = 8;
-    
-    // Recalculate coords incase tick lenght changed
-    x0 = sx * (100 + tl) + 120;
-    y0 = sy * (100 + tl) + 140;
-    x1 = sx * 100 + 120;
-    y1 = sy * 100 + 140;
-    
-    // Draw tick
-    tft.drawLine(x0, y0, x1, y1, ILI9341_BLACK);
-    
-    // Check if labels should be drawn, with position tweaks
-    if (i % 25 == 0) {
-      // Calculate label positions
-      x0 = sx * (100 + tl + 10) + 120;
-      y0 = sy * (100 + tl + 10) + 140;
-      switch (i / 25) {
-        case -2: tft.drawCentreString("0", x0, y0 - 12, 2); break;
-        case -1: tft.drawCentreString("25", x0, y0 - 9, 2); break;
-        case 0: tft.drawCentreString("50", x0, y0 - 6, 2); break;
-        case 1: tft.drawCentreString("75", x0, y0 - 9, 2); break;
-        case 2: tft.drawCentreString("100", x0, y0 - 12, 2); break;
-      }
-    }
-    
-    // Now draw the arc of the scale
-    sx = cos((i + 5 - 90) * 0.0174532925);
-    sy = sin((i + 5 - 90) * 0.0174532925);
-    x0 = sx * 100 + 120;
-    y0 = sy * 100 + 140;
-    // Draw scale arc, don't draw the last part
-    if (i < 50) tft.drawLine(x0, y0, x1, y1, ILI9341_BLACK);
-  }
-  
-  tft.drawString("%RH", 5 + 230 - 40, 119 - 20, 2); // Units at bottom right
-  tft.drawCentreString("%RH", 120, 70, 4); // Comment out to avoid font 4
-  tft.drawRect(5, 3, 230, 119, ILI9341_BLACK); // Draw bezel line
-  
-  plotNeedle(0,0); // Put meter needle at 0
-}
+// value parameters
+static const int val_min = 0, val_max = 40;
 
 // #########################################################################
 // Update needle position
@@ -170,47 +65,51 @@ void plotNeedle(int value, byte ms_delay)
 {
   tft.setTextColor(ILI9341_BLACK, ILI9341_WHITE);
   char buf[8]; dtostrf(value, 4, 0, buf);
-  tft.drawRightString(buf, 40, 119 - 20, 2);
+  tft.drawRightString(buf, xmin + 42, ymax - 23, 2);
 
-  if (value < -10) value = -10; // Limit value to emulate needle end stops
-  if (value > 110) value = 110;
+  if (value < val_min) value = val_min; // Limit value to emulate needle end stops
+  if (value > val_max) value = val_max;
 
-  // Move the needle util new value reached
+  // Move the needle until new value reached
   while (!(value == old_analog)) {
-    if (old_analog < value) old_analog++;
-    else old_analog--;
+    if (old_analog < value) {
+      old_analog++;
+    } else {
+      old_analog--;
+    }
     
-    if (ms_delay == 0) old_analog = value; // Update immediately id delay is 0
+    if (ms_delay == 0) {
+      old_analog = value; // Update immediately if delay is 0
+    }
     
-    float sdeg = map(old_analog, -10, 110, -150, -30); // Map value to angle 
-    // Calcualte tip of needle coords
-    float sx = cos(sdeg * 0.0174532925);
-    float sy = sin(sdeg * 0.0174532925);
+    float sdeg = map(old_analog, val_min, val_max, -140, -40); // Map value to angle 
+    // Calculate tip of needle coords
+    float sx = cos(sdeg * degToAngle);
+    float sy = sin(sdeg * degToAngle);
 
     // Calculate x delta of needle start (does not start at pivot point)
-    float tx = tan((sdeg+90) * 0.0174532925);
+    float tx = tan((sdeg+90) * degToAngle);
     
     // Erase old needle image
-    tft.drawLine(120 + 20 * ltx - 1, 140 - 20, osx - 1, osy, ILI9341_WHITE);
-    tft.drawLine(120 + 20 * ltx, 140 - 20, osx, osy, ILI9341_WHITE);
-    tft.drawLine(120 + 20 * ltx + 1, 140 - 20, osx + 1, osy, ILI9341_WHITE);
+    tft.drawLine(xmid + needle_outside * ltx - 1, yoffset - needle_outside, osx - 1, osy, ILI9341_WHITE);
+    tft.drawLine(xmid + needle_outside * ltx, yoffset - needle_outside, osx, osy, ILI9341_WHITE);
+    tft.drawLine(xmid + needle_outside * ltx + 1, yoffset - needle_outside, osx + 1, osy, ILI9341_WHITE);
     
     // Re-plot text under needle
     tft.setTextColor(ILI9341_BLACK);
-    tft.drawCentreString("%RH", 120, 70, 4); // // Comment out to avoid font 4
     
     // Store new needle end coords for next erase
     ltx = tx;
-    osx = sx * 98 + 120;
-    osy = sy * 98 + 140;
+    osx = sx * needle_length + xmid;
+    osy = sy * needle_length + yoffset;
     
-    // Draw the needle in the new postion, magenta makes needle a bit bolder
+    // Draw the needle in the new position, magenta makes needle a bit bolder
     // draws 3 lines to thicken needle
-    tft.drawLine(120 + 20 * ltx - 1, 140 - 20, osx - 1, osy, ILI9341_RED);
-    tft.drawLine(120 + 20 * ltx, 140 - 20, osx, osy, ILI9341_MAGENTA);
-    tft.drawLine(120 + 20 * ltx + 1, 140 - 20, osx + 1, osy, ILI9341_RED);
+    tft.drawLine(xmid + needle_outside * ltx - 1, yoffset - needle_outside, osx - 1, osy, ILI9341_RED);
+    tft.drawLine(xmid + needle_outside * ltx, yoffset - needle_outside, osx, osy, ILI9341_MAGENTA);
+    tft.drawLine(xmid + needle_outside * ltx + 1, yoffset - needle_outside, osx + 1, osy, ILI9341_RED);
     
-    // Slow needle down slightly as it approaches new postion
+    // Slow needle down slightly as it approaches new position
     if (abs(old_analog - value) < 10) ms_delay += ms_delay / 5;
     
     // Wait before next update
@@ -219,36 +118,123 @@ void plotNeedle(int value, byte ms_delay)
 }
 
 // #########################################################################
-// Draw 3 digit digital meter with faint 7 segment image
+//  Draw the analogue meter on the screen
 // #########################################################################
-void digitalMeter()
+
+void analogMeter()
 {
-  int xpos = 118, ypos = 134; // was 134
-  tft.fillRect(xpos - 52, ypos - 5, 2 * 54, 59, ILI9341_GREY);
-  tft.fillRect(xpos - 49, ypos - 2, 2 * 51, 53, ILI9341_BLACK);
-  tft.setTextColor(7 << 11, ILI9341_BLACK); // Plot over numbers in dim red
-  tft.drawString("888", xpos - 48, ypos+1, 7);
+  // Meter outline
+  // tft.fillRect(xmin, ymin, xmax, ymax, ILI9341_GREY);
+  // tft.fillRect(xmin+5, ymin+3, xmax-5, ymax-3, ILI9341_WHITE);
+  
+  tft.setTextColor(ILI9341_BLACK);  // Text colour
+  
+  // Draw ticks every 5 degrees from -50 to +50 degrees (100 deg. FSD swing)
+  for (int i = -50; i < 51; i += 5) {
+    // Long scale tick length
+    int tl = 15;
+
+    
+    // Coordinates of tick to draw
+    float sx = cos((i - 90) * degToAngle);
+    float sy = sin((i - 90) * degToAngle);
+    uint16_t x0 = sx * (scale_dia + tl) + xmid;
+    uint16_t y0 = sy * (scale_dia + tl) + yoffset;
+    uint16_t x1 = sx * scale_dia + xmid;
+    uint16_t y1 = sy * scale_dia + yoffset;
+    
+    // Coordinates of next tick for zone fill
+    float sx2 = cos((i + 5 - 90) * degToAngle);
+    float sy2 = sin((i + 5 - 90) * degToAngle);
+    int x2 = sx2 * (scale_dia + tl) + xmid;
+    int y2 = sy2 * (scale_dia + tl) + yoffset;
+    int x3 = sx2 * scale_dia + xmid;
+    int y3 = sy2 * scale_dia + yoffset;
+    
+    // Yellow zone limits
+    if (i < -25 || (i >= 10 && i < 25)) {
+      tft.fillTriangle(x0, y0, x1, y1, x2, y2, ILI9341_YELLOW);
+      tft.fillTriangle(x1, y1, x2, y2, x3, y3, ILI9341_YELLOW);
+    }
+
+    // Orange zone limits
+    if (i >= 25 && i < 50) {
+      tft.fillTriangle(x0, y0, x1, y1, x2, y2, ILI9341_ORANGE);
+      tft.fillTriangle(x1, y1, x2, y2, x3, y3, ILI9341_ORANGE);
+    }
+    
+    // Red zone limits
+    if (i >= 25 && i < 50) {
+      tft.fillTriangle(x0, y0, x1, y1, x2, y2, ILI9341_RED);
+      tft.fillTriangle(x1, y1, x2, y2, x3, y3, ILI9341_RED);
+    }
+    
+    // Short scale tick length
+    if (i % 25 != 0) tl = 8;
+    
+    // Recalculate coords in case tick length changed
+    x0 = sx * (scale_dia + tl) + xmid;
+    y0 = sy * (scale_dia + tl) + yoffset;
+    x1 = sx * scale_dia + xmid;
+    y1 = sy * scale_dia + yoffset;
+    
+    // Draw tick
+    tft.drawLine(x0, y0, x1, y1, ILI9341_BLACK);
+    
+    // Check if labels should be drawn, with position tweaks
+    if (i % 25 == 0) {
+      // Calculate label positions
+      x0 = sx * (scale_dia + tl + 10) + xmid;
+      y0 = sy * (scale_dia + tl + 10) + yoffset;
+      switch (i / 25) {
+        case -2: tft.drawCentreString("0", x0, y0 - 12, 2); break;
+        case -1: tft.drawCentreString("10", x0, y0 - 9, 2); break;
+        case 0: tft.drawCentreString("20", x0, y0 - 6, 2); break;
+        case 1: tft.drawCentreString("30", x0, y0 - 9, 2); break;
+        case 2: tft.drawCentreString("40", x0, y0 - 12, 2); break;
+      }
+    }
+    
+    // Now draw the arc of the scale
+    sx = cos((i + 5 - 90) * degToAngle);
+    sy = sin((i + 5 - 90) * degToAngle);
+    x0 = sx * scale_dia + xmid;
+    y0 = sy * scale_dia + yoffset;
+    // Draw scale arc, don't draw the last part
+    if (i < 50) tft.drawLine(x0, y0, x1, y1, ILI9341_BLACK);
+  }
+  
+  tft.drawString("Temp", xmax - 42, ymax - 23, 2); // Font doesn't have a ° symbol
+  tft.drawRect(xmin+5, ymin+3, xmax-5, ymax-3, ILI9341_BLACK); // Draw bezel line
+  
+  plotNeedle(0,0); // Put meter needle at 0
 }
 
-// #########################################################################
-// Update digital meter reading
-// #########################################################################
-void showDigital(int value)
-{
-  if (value==old_digital) return; // return if no change to prevent flicker
-  if (value < 0) value = 0; //Constrain lower limit to 0
-  if (value > 999) value = 999; //Constrain upper limit to 999
-  
-  int xpos = 118, ypos = 134+1; // Position with location tweak
-  tft.setTextColor(7 << 11, ILI9341_BLACK); // Plot over numbers in dim red
-  tft.drawString("888", xpos - 47, ypos, 7); //Erase old value
-  
-  // Nb. 32 pixels wide +2 gap per digit
-  
-  // Update with new value
-  tft.setTextColor(ILI9341_RED); // Dont draw background to leave dim segments
-  if (value < 10) tft.drawNumber(value, xpos+19, ypos, 7);
-  else if (value < 100) tft.drawNumber(value, xpos - 14, ypos, 7);
-  else tft.drawNumber(value, xpos - 47, ypos, 7);
-  old_digital = value;
+static int bar_min = 0;
+static int bar_max = 80;
+static int bar_warnbelow = 20;
+static int bar_xmin = xmax+1, bar_xmax = 320, bar_ymin = 0, bar_ymax = 240;
+void barLines(int value) {
+  tft.fillRect(bar_xmin, bar_ymin, bar_xmax, bar_ymax, ILI9341_GREY);
+
+  if (value < bar_min) {
+    value = bar_min;
+  }
+  if (value > bar_max) {
+    value = bar_max;
+  }
+
+  tft.fillRect(bar_xmin, map(value, bar_min, bar_max, bar_ymax, bar_ymin),
+    bar_xmax, bar_ymax,
+    value < bar_warnbelow ? ILI9341_RED : ILI9341_GREEN);
+}
+
+void setupAnalogMeter(void) {
+  tft.init();
+  tft.setRotation(3);
+
+  tft.fillScreen(ILI9341_WHITE);
+
+  analogMeter(); // Draw analogue meter
+  barLines(42);
 }
