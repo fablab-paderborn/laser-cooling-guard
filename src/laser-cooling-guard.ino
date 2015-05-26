@@ -18,6 +18,7 @@ void setup() {
   digitalWrite(relais, HIGH); // start with laser OFF
 
   sensors.begin();
+  sensors.setResolution(9);
   sensors.requestTemperatures();
 
   setupAnalogMeter();
@@ -28,7 +29,7 @@ int pulses = 0;
 int lastread = 0;
 
 static const double tmin = 10, tmax = 28;
-static const int flow_min = 23;
+static const int flow_min = 2;
 
 void loop() {
   int thisread = digitalRead(flowmeter);
@@ -36,7 +37,7 @@ void loop() {
   lastread = thisread;
 
   ++loopctr;
-  loopctr %= 0xffff;
+  loopctr %= 0x1fff;
   if (0==loopctr) {
     float celsius = sensors.getTempCByIndex(0);
     sensors.requestTemperatures();

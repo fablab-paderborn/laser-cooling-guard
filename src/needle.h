@@ -211,8 +211,8 @@ void analogMeter()
 }
 
 static int bar_min = 0;
-static int bar_max = 80;
-static int bar_warnbelow = 20;
+static int bar_max = 23;
+static int bar_warnbelow = 5;
 static int bar_xmin = xmax+1, bar_xmax = 320, bar_ymin = 0, bar_ymax = 240;
 void barLines(int value) {
   tft.fillRect(bar_xmin, bar_ymin, bar_xmax, bar_ymax, ILI9341_GREY);
