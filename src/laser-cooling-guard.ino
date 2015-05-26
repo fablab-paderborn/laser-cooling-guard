@@ -10,6 +10,7 @@ const int relais = 8;
 
 OneWire ds(4);
 DallasTemperature sensors(&ds);
+DeviceAddress     sensor_address;
 
 void setup() {
   Serial.begin(9600); // debug output only
@@ -19,6 +20,7 @@ void setup() {
 
   sensors.begin();
   sensors.setResolution(9);
+  sensors.getAddress(sensor_address, 0);
   sensors.requestTemperatures();
 
   setupAnalogMeter();
@@ -37,9 +39,8 @@ void loop() {
   lastread = thisread;
 
   ++loopctr;
-  loopctr %= 0x1fff;
-  if (0==loopctr) {
-    float celsius = sensors.getTempCByIndex(0);
+  if (loopctr > 0x1000 && sensors.isConversionAvailable(sensor_address)) {
+    float celsius = sensors.getTempC(sensor_address);
     sensors.requestTemperatures();
 
     plotNeedle(celsius, 5);
@@ -60,6 +61,13 @@ void loop() {
     Serial.print(" pulses -> ");
     Serial.println(everything_is_fine ? "OK" : "PROBLEM");
     pulses = 0;
+    loopctr = 0;
+  } else if (loopctr > 0x10000) {
+    // something went wrong
+    Serial.println("timeout waiting for temp");
+    sensors.getAddress(sensor_address, 0);
+    sensors.requestTemperatures();
+    loopctr = 0;
   }
 }
 
