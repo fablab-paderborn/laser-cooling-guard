@@ -236,5 +236,5 @@ void setupAnalogMeter(void) {
   tft.fillScreen(ILI9341_WHITE);
 
   analogMeter(); // Draw analogue meter
-  barLines(42);
+  barLines(0);
 }
